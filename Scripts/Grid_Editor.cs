@@ -53,18 +53,24 @@ public class Grid_Editor : Editor {
             if (lastNode == null) lastNode = nodes[0, 0];  // Assing last node as the start if null
             int w = 0, h = 0;
             while (w < Width) {
-                NodeRectangle_Gizmo cube = nodes[w, h];
-                if (Handles.Button(cube.Position, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw)) {
-                    List<NodeRectangle_Gizmo> path = pathfinding.GetPath(lastNode, nodes[cube.W, cube.H], nodes);
-                    if (path != null) {
-                        lastNode = path[path.Count - 1];
-                        if (debugCoroutine != null)
-                            EditorCoroutineUtility.StopCoroutine(debugCoroutine);
-                        debugCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(SendDebugShpere(debugSphere.transform, path, 0.2f));
+                try {
+                    NodeRectangle_Gizmo cube = nodes[w, h];
+                    if (Handles.Button(cube.Position, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw) && cube.CanBeNavigated) {
+                        List<NodeRectangle_Gizmo> path = pathfinding.GetPath(lastNode, nodes[cube.W, cube.H], nodes);
+                        if (path != null) {
+                            lastNode = path[path.Count - 1];
+                            if (debugCoroutine != null)
+                                EditorCoroutineUtility.StopCoroutine(debugCoroutine);
+                            debugCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(SendDebugShpere(debugSphere.transform, path, 0.2f));
+                        }
                     }
+                    h++;
+                    if (h >= Height) { h = 0; w++; }
                 }
-                h++;
-                if (h >= Height) { h = 0; w++; }
+                catch {
+                    return;
+                }
+
             }
             DrawSlider(ref widthSlider, Vector3.right, size: Length * 4, step: 1f);
             DrawSlider(ref heightSlider, Vector3.up, size: Length * 4, step: 1f);
@@ -105,13 +111,21 @@ public class Grid_Editor : Editor {
 
 
     private void DrawSlider(ref Vector3 sliderValue, Vector3 direction, float size, float step) {
+
         Vector3 newValue = Handles.Slider(sliderValue, direction, size, Handles.ArrowHandleCap, step);
-        if (Mathf.Abs(newValue.x - sliderValue.x) > 0.9f && (int)sliderValue.x / Length > 1) {
+        if (direction.x > 0 && Mathf.Abs(newValue.x - sliderValue.x) > 0.9f && (int)sliderValue.x / Length > 1) {
             sliderValue = newValue;
             if ((int)widthSlider.x / Length > 0)
                 grid.SetWidthFromEditor((int)widthSlider.x / Length);
             BuildGrid();
         }
+        else if (Mathf.Abs(newValue.y - sliderValue.y) > 0.9f && (int)sliderValue.y / Length > 1) {
+            sliderValue = newValue;
+            if ((int)heightSlider.y / Length > 0)
+                grid.SetHeightFromEditor((int)heightSlider.y / Length);
+            BuildGrid();
+        }
+
     }
     private IEnumerator SendDebugShpere(Transform sphere, List<NodeRectangle_Gizmo> targets, float speed) {
         while (targets.Count > 0) {

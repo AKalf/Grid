@@ -29,7 +29,7 @@ public class Pathfinding {
             _openList.Remove(current);
             _closedList.Add(current);
             foreach (TNode neighbour in GetNeigbours(current, nodes)) {
-                if (_closedList.Contains(neighbour))
+                if (_closedList.Contains(neighbour) || neighbour.CanBeNavigated == false)
                     continue;
                 int tentativeWalkingCost = current.WalkingCost + CalculateDistanceCost(current, neighbour);
                 if (tentativeWalkingCost < neighbour.WalkingCost) {
@@ -100,6 +100,7 @@ public class Pathfinding {
         int WalkingCost { get; set; }
         int HeuristicCost { get; set; }
         int TotalCost { get; }
+        bool CanBeNavigated { get; set; }
         T CameFrom { get; set; }
     }
 }

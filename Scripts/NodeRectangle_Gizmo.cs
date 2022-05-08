@@ -29,6 +29,7 @@ public class NodeRectangle_Gizmo : Pathfinding.INode<NodeRectangle_Gizmo> {
     public int HeuristicCost { get; set; }
     public int TotalCost => WalkingCost + HeuristicCost;
     public NodeRectangle_Gizmo CameFrom { get; set; }
+    public bool CanBeNavigated { get; set; }
 
 
     //public GameObject gameObject => Grid_Editor.BakedGrid[w, h];
