@@ -43,7 +43,6 @@ public class Grid : MonoBehaviour {
         newGamboject.name = "X: " + w + " H: " + h;
         newGamboject.transform.position = transform.position + new Vector3(w * size.x, h * size.y, 0);
         newGamboject.transform.parent = nodesParent;
-        newGamboject.transform.localScale = size / 42;
         gridObjects.Add(newGamboject);
         SpriteRenderer renderer = newGamboject.AddComponent<SpriteRenderer>();
         if (w == 0 || h == 0 || w == NodesOnGrid.GetLength(0) - 1 || h == NodesOnGrid.GetLength(1) - 1 || (w == 5 && h != 2)) {
