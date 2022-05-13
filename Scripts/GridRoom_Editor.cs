@@ -10,6 +10,9 @@ public class GridRoom_Editor : Editor {
     private GridRoom gridRoom = null;
     private Transform gridTransform = null;
     private List<Transform> generatedRoomObjects = new List<Transform>();
+
+    private List<Vector3> verticiesList = new List<Vector3>(), normalsList = new List<Vector3>();
+    private List<int> trianglesList = new List<int>();
     public override void OnInspectorGUI() {
         base.OnInspectorGUI();
         if (gridRoom == null) {
@@ -20,7 +23,7 @@ public class GridRoom_Editor : Editor {
             generatedRoomObjects.Clear();
             gridTransform.localScale = new Vector3(gridRoom.roomLength, gridRoom.roomHeight, 1);
             GameObject newG = new GameObject();
-            PolyMesh(newG, 20, 30);
+            PolyMesh(newG, 20, 50);
         }
     }
 
@@ -44,8 +47,26 @@ public class GridRoom_Editor : Editor {
                     );
             }
         }
+        if (verticiesList.Count > 0) {
+            int index = 0;
+            Handles.color = Color.blue;
+            for (int i = 0; i < this.verticiesList.Count; i++) {
+                Vector3 vertex = this.verticiesList[i];
+                Handles.DrawWireCube(vertex, Vector3.one / 2);
+                Handles.Label(vertex, i.ToString());
+                index++;
 
+                if (index > 5) {
+                    Handles.color = Color.blue;
+                    index = 0;
+                }
+                if (index > 2)
+                    Handles.color = Color.red;
+            }
+        }
+        //if (trianglesList.Count > 0)
         Handles.color = original;
+
         serializedObject.Update();
         serializedObject.ApplyModifiedProperties();
     }
@@ -56,44 +77,37 @@ public class GridRoom_Editor : Editor {
         Mesh mesh = new Mesh();
         mf.mesh = mesh;
 
-        //verticies
-        List<Vector3> verticiesList = new List<Vector3> { };
-        float outerX = 0, innerX, outerY = 0, innerY;
+
+        float outerX, innerX, outerY, innerY;
         for (int i = 0; i < n; i++) {
-            outerX = radius * Mathf.Sin((2 * Mathf.PI * i) / n);
-            outerY = radius * Mathf.Cos((2 * Mathf.PI * i) / n);
+            outerX = radius * Mathf.Sin(2 * Mathf.PI * i / n);
+            outerY = radius * Mathf.Cos(2 * Mathf.PI * i / n);
+            verticiesList.Add(new Vector3(outerX, outerY, 0f));
+        }
+        for (int i = 0; i < n; i++) {
+            outerX = (radius + 1) * Mathf.Sin(2 * Mathf.PI * i / n);
+            outerY = (radius + 1) * Mathf.Cos(2 * Mathf.PI * i / n);
             verticiesList.Add(new Vector3(outerX, outerY, 0f));
         }
 
-        outerX = radius * Mathf.Sin((2 * Mathf.PI * 0) / n);
-        outerY = radius * Mathf.Cos((2 * Mathf.PI * 0) / n);
-        verticiesList.Add(new Vector3(outerX, outerY, 0f));
+
+        mesh.SetVertices(verticiesList);
+        n = verticiesList.Count;
 
         for (int i = 0; i < n; i++) {
-            innerX = (radius - 2) * Mathf.Sin((2 * Mathf.PI * i) / n);
-            innerY = (radius - 2) * Mathf.Cos((2 * Mathf.PI * i) / n);
-            verticiesList.Add(new Vector3(innerX, innerY, 0f));
-        }
-
-        innerX = (radius - 2) * Mathf.Sin((2 * Mathf.PI * 0) / n);
-        innerY = (radius - 2) * Mathf.Cos((2 * Mathf.PI * 0) / n);
-        verticiesList.Add(new Vector3(innerX, innerY, 0f));
-
-        Vector3[] verticies = verticiesList.ToArray();
-        mesh.SetVertices(verticiesList);
-        n = n + n + 2;
-        //triangles
-        List<int> trianglesList = new List<int> { };
-        for (int i = 0; i < (n - 2); i++) {
             trianglesList.Add(i);
-            trianglesList.Add(i + 1);
-            trianglesList.Add(i + 2);
+            if (i + 1 >= n)
+                trianglesList.Add(i + 1 - n);
+            else
+                trianglesList.Add(i + 1);
+            if (i + 2 >= n)
+                trianglesList.Add(i + 2 - n);
+            else
+                trianglesList.Add(i + 2);
         }
 
         mesh.SetTriangles(trianglesList.ToArray(), 0);
 
-        ////normals
-        List<Vector3> normalsList = new List<Vector3> { };
         for (int i = 0; i < n; i++) {
             normalsList.Add(-Vector3.forward);
         }
@@ -103,7 +117,7 @@ public class GridRoom_Editor : Editor {
         //polyCollider
         polyCollider.pathCount = 1;
 
-        List<Vector2> pathList = new List<Vector2> { };
+        List<Vector2> pathList = new List<Vector2>();
         for (int i = 0; i < n; i++) {
             pathList.Add(new Vector2(verticiesList[i].x, verticiesList[i].y));
         }
@@ -113,4 +127,6 @@ public class GridRoom_Editor : Editor {
         MeshRenderer renderer = newGameobject.AddComponent<MeshRenderer>();
 
     }
+
+
 }
