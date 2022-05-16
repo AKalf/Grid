@@ -10,14 +10,10 @@ public class GridRoom : MonoBehaviour {
     private BoundsInt thisCollider = new BoundsInt();
 
     // Start is called before the first frame update
-    void Start() {
-
-    }
+    void Start() { }
 
     // Update is called once per frame
-    void Update() {
-
-    }
+    void Update() { }
 
     [Serializable]
     public struct Line {

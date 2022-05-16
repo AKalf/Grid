@@ -19,7 +19,7 @@ public class GridRoom_Editor : Editor {
             gridRoom = (GridRoom)target;
             gridTransform = gridRoom.transform;
         }
-        if (GUILayout.Button("Build outer walls")) {
+        if (GUILayout.Button("Create new room")) {
             generatedRoomObjects.Clear();
             gridTransform.localScale = new Vector3(gridRoom.roomLength, gridRoom.roomHeight, 1);
             GameObject newG = new GameObject();
@@ -85,6 +85,7 @@ public class GridRoom_Editor : Editor {
             verticiesList.Add(new Vector3(outerX, outerY, 0f));
         }
         for (int i = 0; i < n; i++) {
+
             outerX = (radius + 1) * Mathf.Sin(2 * Mathf.PI * i / n);
             outerY = (radius + 1) * Mathf.Cos(2 * Mathf.PI * i / n);
             verticiesList.Add(new Vector3(outerX, outerY, 0f));

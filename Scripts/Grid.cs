@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Grid : MonoBehaviour {
+public class Grid<TTile> {
     [SerializeField]
-    public List<NodeRectangle_Gizmo> NodeCubes = new List<NodeRectangle_Gizmo>();
+    public List<Pathfinding.INode<TTile>> NodeCubes = new List<Pathfinding.INode<TTile>>();
     [SerializeField, HideInInspector]
     private List<GameObject> gridObjects = new List<GameObject>();
     [SerializeField] private Transform nodesParent = null;
@@ -12,8 +12,8 @@ public class Grid : MonoBehaviour {
     [SerializeField, HideInInspector]
     private int width = 0, height = 0, length = 0;
 
-    private NodeRectangle_Gizmo[,] nodesOnGrid = null;
-    public NodeRectangle_Gizmo[,] NodesOnGrid { get => nodesOnGrid; private set => nodesOnGrid = value; }
+    private Pathfinding.INode<TTile>[,] nodesOnGrid = null;
+    public Pathfinding.INode<TTile>[,] NodesOnGrid { get => nodesOnGrid; private set => nodesOnGrid = value; }
 
 
     public int Width => width;
@@ -21,21 +21,23 @@ public class Grid : MonoBehaviour {
     public int Length => length;
 
     public void ClearNodes() {
+
         NodeCubes.Clear();
         NodesOnGrid = null;
     }
     public void CreateGrid() {
+
         ClearNodes();
         foreach (var node in gridObjects)
-            DestroyImmediate(node);
+            MonoBehaviour.DestroyImmediate(node);
         gridObjects.Clear();
-        NodesOnGrid = new NodeRectangle_Gizmo[width, height];
+        NodesOnGrid = new Pathfinding.INode<TTile>[width, height];
     }
 
     public void AssignNodeToGrid(int w, int h, Vector3 pos, Vector3 size, Vector3 labelPos, string label, Color color) {
         if (NodesOnGrid == null)
             return;
-        NodeRectangle_Gizmo newGizmo = new NodeRectangle_Gizmo(w, h, pos, size, labelPos, label, color);
+        Pathfinding.INode<TTile> newGizmo = new NodeRectangle_Gizmo(w, h, pos, size, labelPos, label, color);
         newGizmo.CanBeNavigated = true;
         NodeCubes.Add(newGizmo);
         NodesOnGrid[w, h] = newGizmo;

@@ -71,9 +71,9 @@ public class Pathfinding {
     private List<TNode> CalculatePathResult<TNode>(TNode endNode) where TNode : INode<TNode> {
         List<TNode> path = new List<TNode>();
         path.Add(endNode);
-        TNode current = endNode;
+        INode<TNode> current = endNode;
         while (current.CameFrom != null) {
-            path.Add(current.CameFrom);
+            path.Add((TNode)current.CameFrom);
             current = current.CameFrom;
         }
         path.Reverse();
@@ -101,6 +101,9 @@ public class Pathfinding {
         int HeuristicCost { get; set; }
         int TotalCost { get; }
         bool CanBeNavigated { get; set; }
-        T CameFrom { get; set; }
+        INode<T> CameFrom { get; set; }
+        GameObject gameObject { get; set; }
+        T GetNewNode(Vector3 position, Vector3 size);
+
     }
 }
