@@ -4,19 +4,21 @@ using System.Collections.Generic;
 using Unity.EditorCoroutines.Editor;
 using UnityEditor;
 using UnityEngine;
-[CustomEditor(typeof(Grid))]
+using GizmoTile = Pathfinding.IGridTile<NodeRectangle_Gizmo>;
+[CustomEditor(typeof(GridSpace))]
 public class Grid_Editor : Editor {
 
-    private static Transform myTrans = null;
-    private static Grid grid = null;
-    private NodeRectangle_Gizmo[,] nodes => grid.NodesOnGrid;
+    private static Grid<NodeRectangle_Gizmo> grid = null;
+    private GizmoTile[,] nodes => grid.NodesOnGrid;
 
     private int Width => grid.Width;
     private int Height => grid.Height;
     private int Length => grid.Length;
 
     private Vector3 widthSlider = Vector3.zero, heightSlider = Vector3.zero;
-    private NodeRectangle_Gizmo lastNode = null;
+
+    private Transform tilesParent = null;
+    private GizmoTile lastNode = null;
     private Pathfinding pathfinding = new Pathfinding();
     private SphereController debugSphere = null;
     private EditorCoroutine debugCoroutine = null;
@@ -24,38 +26,41 @@ public class Grid_Editor : Editor {
     private void OnEnable() {
         if (debugSphere == null)
             debugSphere = GameObject.FindObjectOfType<SphereController>();
-        if (grid == null)
-            grid = (Grid)target;
-        if (myTrans == null)
-            myTrans = grid.transform;
+        if (grid == null) {
+            grid = new Grid<NodeRectangle_Gizmo>(Width, Height, Length);
+        }
+
     }
     private void BuildGrid() {
         if (Width > 0 && Height > 0 && Length > 0) {
             grid.ClearNodes();
             grid.CreateGrid();
 
-            Vector3 origin = myTrans.position, rectanglePosition = Vector3.zero, rectangleSize = Vector3.one * Length, labelPosition = Vector3.zero;
+            Vector3 origin = tilesParent.position, rectanglePosition = Vector3.zero, rectangleSize = Vector3.one * Length, labelPosition = Vector3.zero;
             for (int w = 0; w < Width; w++) {
                 for (int h = 0; h < Height; h++) {
                     rectanglePosition = origin + new Vector3(w, h, 0) * Length;
                     labelPosition = rectanglePosition + new Vector3(-(Length / 4 + 0.4f), rectangleSize.y / 10 + 0.2f, 0);
-                    grid.AssignNodeToGrid(w, h, rectanglePosition, rectangleSize, labelPosition, "X: " + w + "\nY: " + h, Color.white);
+                    Func<NodeRectangle_Gizmo> constructor = () => {
+                        return new NodeRectangle_Gizmo(w, h, rectanglePosition, rectangleSize, labelPosition, "X: " + w + "\nY: " + h, Color.white, Color.black);
+                    };
+                    grid.CreateTileForGrid(w, h, constructor, origin, rectangleSize);
                 }
             }
-            widthSlider = myTrans.position + Vector3.right * (Width * Length);
-            heightSlider = myTrans.position + Vector3.up * (Height * Length);
+            widthSlider = tilesParent.position + Vector3.right * (Width * Length);
+            heightSlider = tilesParent.position + Vector3.up * (Height * Length);
         }
     }
     protected virtual void OnSceneGUI() {
         if (nodes == null && grid != null)
-            grid.GetNodesOnGrid();
+            grid.GetGridTiles();
         if (nodes != null && nodes.Length > 0) {
             if (lastNode == null) lastNode = nodes[0, 0];  // Assing last node as the start if null
             int w = 0, h = 0;
             while (w < Width) {
                 try {
-                    NodeRectangle_Gizmo cube = nodes[w, h];
-                    if (Handles.Button(cube.Position, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw) && cube.CanBeNavigated) {
+                    NodeRectangle_Gizmo cube = nodes[w, h] as NodeRectangle_Gizmo;
+                    if (Handles.Button(cube.GetPosition, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw) && cube.CanBeNavigated) {
                         List<NodeRectangle_Gizmo> path = pathfinding.GetPath(lastNode, nodes[cube.W, cube.H], nodes);
                         if (path != null) {
                             lastNode = path[path.Count - 1];
@@ -105,7 +110,7 @@ public class Grid_Editor : Editor {
         if (GUILayout.Button("Clear nodes"))
             grid.ClearNodes();
         if (GUILayout.Button("Return sphere"))
-            debugSphere.transform.position = myTrans.position;
+            debugSphere.transform.position = tilesParent.position;
     }
     #endregion
 

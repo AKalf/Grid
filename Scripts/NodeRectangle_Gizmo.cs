@@ -7,7 +7,7 @@ using UnityEditor.EditorTools;
 using UnityEngine;
 
 
-public class NodeRectangle_Gizmo : Pathfinding.INode<NodeRectangle_Gizmo> {
+public class NodeRectangle_Gizmo : Pathfinding.IGridTile<NodeRectangle_Gizmo> {
     // Variables       
     #region Variables
     private int widthIndex = 0, heightIndex = 0;
@@ -28,11 +28,11 @@ public class NodeRectangle_Gizmo : Pathfinding.INode<NodeRectangle_Gizmo> {
     public int WalkingCost { get; set; }
     public int HeuristicCost { get; set; }
     public int TotalCost => WalkingCost + HeuristicCost;
-    public NodeRectangle_Gizmo CameFrom { get; set; }
+    public Pathfinding.IGridTile<NodeRectangle_Gizmo> CameFrom { get; set; }
     public bool CanBeNavigated { get; set; }
+    public GameObject gameObject { get => null; set { } }
 
 
-    //public GameObject gameObject => Grid_Editor.BakedGrid[w, h];
     #endregion
     public NodeRectangle_Gizmo(int w, int h, Vector3 cubePos, Vector3 cubeSize, Vector3 labelPos, string label, Color cubeColor = default, Color labelColor = default) {
         this.widthIndex = w;
@@ -53,6 +53,8 @@ public class NodeRectangle_Gizmo : Pathfinding.INode<NodeRectangle_Gizmo> {
         nodeCoroutine = null;
         lineCoroutine = null;
     }
+
+    #region Drawing Functions
     public void Draw(int controlID, Vector3 pos, Quaternion rot, float size, EventType type) {
         Color prevColor = Handles.color;
         Handles.color = this.CubeColor;
@@ -116,4 +118,5 @@ public class NodeRectangle_Gizmo : Pathfinding.INode<NodeRectangle_Gizmo> {
     //    else if (direction == LineDirection.Right)
     //        Grid_Editor.LinesColors[w, h, w + 1, h] = Color.white;
     //}
+    #endregion
 }

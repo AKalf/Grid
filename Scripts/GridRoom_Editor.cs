@@ -1,13 +1,13 @@
 using System;
 using UnityEngine;
 using UnityEditor;
-using static GridRoom;
+using static GridSpace;
 using System.Collections.Generic;
 
-[CustomEditor(typeof(GridRoom))]
+[CustomEditor(typeof(GridSpace))]
 public class GridRoom_Editor : Editor {
 
-    private GridRoom gridRoom = null;
+    private GridSpace gridRoom = null;
     private Transform gridTransform = null;
     private List<Transform> generatedRoomObjects = new List<Transform>();
 
@@ -16,7 +16,7 @@ public class GridRoom_Editor : Editor {
     public override void OnInspectorGUI() {
         base.OnInspectorGUI();
         if (gridRoom == null) {
-            gridRoom = (GridRoom)target;
+            gridRoom = (GridSpace)target;
             gridTransform = gridRoom.transform;
         }
         if (GUILayout.Button("Create new room")) {

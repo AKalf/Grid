@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public struct GridTile : Pathfinding.INode<GridTile> {
+public struct GridTile : Pathfinding.IGridTile<GridTile> {
 
     public enum TileType { Entrance, Exit, Boarder, Normal }
 
@@ -21,10 +21,15 @@ public struct GridTile : Pathfinding.INode<GridTile> {
     public int HeuristicCost { get; set; }
     public int TotalCost => WalkingCost + HeuristicCost;
     public bool CanBeNavigated { get; set; }
-    public Pathfinding.INode<GridTile> CameFrom { get; set; }
+    public Pathfinding.IGridTile<GridTile> CameFrom { get; set; }
     public GameObject gameObject { get => thisGameObject; set => thisGameObject = value; }
-    public GridTile GetNewNode(params object[] parameters) {
-        return new GridTile((Vector3Int)parameters[0], (Vector3Int)parameters[1], (Sprite)parameters[2], (TileType)parameters[4], (GameObject)parameters[5]);
+    public GridTile GetNewNode(Vector3 position, Vector3 size) {
+        return new GridTile(
+            position: new Vector3Int((int)position.x, (int)position.y, (int)position.z),
+            size: new Vector3Int((int)size.x, (int)size.y, (int)size.z),
+            sprite: null,
+            type: TileType.Normal,
+            representation: null);
     }
     public GridTile(Vector3Int position, Vector3Int size, Sprite sprite, TileType type, GameObject representation) {
         this.position = position;
