@@ -6,9 +6,8 @@ using UnityEngine;
 public class GridSpace : MonoBehaviour {
     [SerializeField] public Vector2Int GridSize, GridTileSize;
     [SerializeField] public Line[] Entrances = null, Exits = null;
-
-    [SerializeField] public Grid<GridTile> Grid = new Grid<GridTile>(10, 10, 2, 2);
-
+    [SerializeField] public List<GridTile> Tiles = new List<GridTile>();
+    [SerializeField] public Sprite BoarderSprite = null, BackgroundSprite = null;
     // Start is called before the first frame update
     void Start() { }
 

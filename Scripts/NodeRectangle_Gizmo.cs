@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using Unity.EditorCoroutines.Editor;
 using UnityEditor;
-using UnityEditor.EditorTools;
 using UnityEngine;
 
 
-public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
+public class NodeRectangle_Gizmo : Pathfinding.IGridTile {
+
+    public static NodeRectangle_Gizmo CreateNew(int w, int h, Transform tilesParent, Vector2Int GridSize, Vector2Int TileSize) {
+        return new NodeRectangle_Gizmo(w, h,
+                   tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0),
+                   TileSize,
+                   "X: " + w + "\nY: " + h,
+                   (w == 0 || w == GridSize.x - 1 || h == 0 || h == GridSize.y - 1) ? GridTile.TileType.Boarder : GridTile.TileType.Normal,
+                   Color.white, Color.black);
+    }
     // Variables       
     #region Variables
     private int widthIndex = 0, heightIndex = 0;
     public Vector3 Position = Vector3.zero, Size = Vector3.zero, LabelPosition = Vector3.zero;
-    public Color Original = Color.white, CubeColor = Color.white, LabelColor = Color.black;
+    public Color Original = Color.white, TileGizmoColor = Color.white, LabelColor = Color.black;
     public string Label = "";
     [NonSerialized]
     private EditorCoroutine nodeCoroutine = null, lineCoroutine = null;
@@ -29,14 +36,14 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
     public int WalkingCost { get; set; }
     public int HeuristicCost { get; set; }
     public int TotalCost => WalkingCost + HeuristicCost;
-    public Pathfinding<NodeRectangle_Gizmo>.IGridTile CameFrom { get; set; }
+    public Pathfinding.IGridTile CameFrom { get; set; }
     public bool CanBeNavigated { get; set; }
-    public GameObject gameObject { get => null; set { } }
+    public GameObject GameObject { get => null; set { } }
 
 
 
     #endregion
-    public NodeRectangle_Gizmo(int w, int h, Vector3 position, Vector2Int tileSize, string label, Color cubeColor = default, Color labelColor = default) {
+    public NodeRectangle_Gizmo(int w, int h, Vector3 position, Vector2Int tileSize, string label, GridTile.TileType tileType, Color tileGizmoColor = default, Color labelColor = default) {
         this.widthIndex = w;
         this.heightIndex = h;
 
@@ -48,9 +55,12 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
         this.Size = (Vector2)tileSize;
         this.LabelPosition = this.Position + new Vector3(-(tileSize.x / 4 + 0.4f), tileSize.y / 10 + 0.2f, 0);
         this.Label = label;
-        this.Original = cubeColor;
-        this.CubeColor = cubeColor;
-        this.LabelColor = labelColor;
+        this.Original = tileGizmoColor;
+        this.TileGizmoColor = tileGizmoColor;
+
+        if (tileType == GridTile.TileType.Normal) this.LabelColor = labelColor;
+        else this.LabelColor = Color.white;
+
 
         nodeCoroutine = null;
         lineCoroutine = null;
@@ -59,7 +69,7 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
     #region Drawing Functions
     public void Draw(int controlID, Vector3 pos, Quaternion rot, float size, EventType type) {
         Color prevColor = Handles.color;
-        Handles.color = this.CubeColor;
+        Handles.color = this.TileGizmoColor;
         if (Tools.current == Tool.View)
             Handles.RectangleHandleCap(controlID, pos, rot, size, EventType.Repaint);
         else {
@@ -67,9 +77,9 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
             Handles.RectangleHandleCap(controlID, pos, rot, size, EventType.Layout);
         }
 
-        Handles.color = this.LabelColor;
         if (Camera.current != null && string.IsNullOrEmpty(Label) == false) {
             GUIStyle style = new GUIStyle(GUIStyle.none);
+            style.normal.textColor = this.LabelColor;
             int fontSize = (int)(30 - Mathf.Abs(Camera.current.transform.position.z - Position.z)); // a magic number who has the desired effect at 1920x1080 resolution
             if (fontSize > 6) { // magic number
                 if (fontSize > 16) // magic condition
@@ -82,7 +92,7 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
     }
     public void ChangeNodeColor(Color color, float duration) {
         if (nodeCoroutine != null) {
-            this.CubeColor = Original;
+            this.TileGizmoColor = Original;
             EditorCoroutineUtility.StopCoroutine(nodeCoroutine);
         }
         nodeCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(ChangeNodeColorCoroutine(color, duration));
@@ -92,16 +102,16 @@ public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
     }
     private IEnumerator ChangeNodeColorCoroutine(Color color, float duration) {
         float timer = 0.0f;
-        this.CubeColor = color;
+        this.TileGizmoColor = color;
         while (timer < duration) {
             yield return new EditorWaitForSeconds(1);
             timer++;
         }
         if (nodeCoroutine != null) {
-            this.CubeColor = Original;
+            this.TileGizmoColor = Original;
             EditorCoroutineUtility.StopCoroutine(nodeCoroutine);
         }
-        this.CubeColor = Original;
+        this.TileGizmoColor = Original;
     }
     //private IEnumerator ChangeLineColorCoroutine(Color color, float duration, LineDirection direction) {
     //    float timer = 0.0f;
