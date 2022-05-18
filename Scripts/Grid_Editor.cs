@@ -4,64 +4,79 @@ using System.Collections.Generic;
 using Unity.EditorCoroutines.Editor;
 using UnityEditor;
 using UnityEngine;
-using GizmoTile = Pathfinding.IGridTile<NodeRectangle_Gizmo>;
+using GizmoTile = Pathfinding<NodeRectangle_Gizmo>.IGridTile;
+using GameTile = Pathfinding<GridTile>.IGridTile;
+
 [CustomEditor(typeof(GridSpace))]
 public class Grid_Editor : Editor {
 
     private static Grid<NodeRectangle_Gizmo> grid = null;
-    private GizmoTile[,] nodes => grid.NodesOnGrid;
+    private NodeRectangle_Gizmo[,] gizmoTiles => grid.NodesOnGrid;
 
-    private int Width => grid.Width;
-    private int Height => grid.Height;
-    private int Length => grid.Length;
-
+    private Vector2Int GridSize => context.GridSize;
+    private Vector2Int TileSize => context.GridTileSize;
     private Vector3 widthSlider = Vector3.zero, heightSlider = Vector3.zero;
+    private int GridWidth => GridSize.x;
+    private int GridHeight => GridSize.y;
+    private int TileWidth => TileSize.x;
+    private int TileHeight => TileSize.y;
+
 
     private Transform tilesParent = null;
-    private GizmoTile lastNode = null;
-    private Pathfinding pathfinding = new Pathfinding();
+    private NodeRectangle_Gizmo lastNode = null;
     private SphereController debugSphere = null;
     private EditorCoroutine debugCoroutine = null;
-
+    private GridSpace context = null;
+    private Sprite backgroundSprite = null, boarderSprite = null;
     private void OnEnable() {
+        if (context == null)
+            context = target as GridSpace;
         if (debugSphere == null)
             debugSphere = GameObject.FindObjectOfType<SphereController>();
-        if (grid == null) {
-            grid = new Grid<NodeRectangle_Gizmo>(Width, Height, Length);
+        if (grid == null || context.Grid == null) {
+            grid = new Grid<NodeRectangle_Gizmo>(GridSize, TileSize, tilesParent);
+            context.Grid = new Grid<GridTile>(GridSize, TileSize, tilesParent, backgroundSprite, boarderSprite);
         }
 
     }
     private void BuildGrid() {
-        if (Width > 0 && Height > 0 && Length > 0) {
+        if (GridSize.x > 0 && GridSize.y > 0 && TileSize.x > 0 && TileSize.y > 0) {
             grid.ClearNodes();
-            grid.CreateGrid();
+            Func<int, int, NodeRectangle_Gizmo> gizmoContructor = (w, h) => {
+                return new NodeRectangle_Gizmo(w, h,
+                    tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0),
+                    TileSize,
+                    "X: " + w + "\nY: " + h,
+                    Color.white, Color.black);
+            };
+            grid.CreateGrid(GridSize, TileSize, gizmoContructor);
 
-            Vector3 origin = tilesParent.position, rectanglePosition = Vector3.zero, rectangleSize = Vector3.one * Length, labelPosition = Vector3.zero;
-            for (int w = 0; w < Width; w++) {
-                for (int h = 0; h < Height; h++) {
-                    rectanglePosition = origin + new Vector3(w, h, 0) * Length;
-                    labelPosition = rectanglePosition + new Vector3(-(Length / 4 + 0.4f), rectangleSize.y / 10 + 0.2f, 0);
-                    Func<NodeRectangle_Gizmo> constructor = () => {
-                        return new NodeRectangle_Gizmo(w, h, rectanglePosition, rectangleSize, labelPosition, "X: " + w + "\nY: " + h, Color.white, Color.black);
-                    };
-                    grid.CreateTileForGrid(w, h, constructor, origin, rectangleSize);
-                }
-            }
-            widthSlider = tilesParent.position + Vector3.right * (Width * Length);
-            heightSlider = tilesParent.position + Vector3.up * (Height * Length);
+            context.Grid.ClearNodes();
+            Func<int, int, GridTile> gameTileConstructor = (w, h) => {
+                bool isOnBoarder = w == 0 || h == 0 || w == GridWidth - 1 || h == GridHeight - 1;
+                return new GridTile(w, h,
+                    tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0),
+                    (Vector3Int)TileSize,
+                    isOnBoarder ? boarderSprite : backgroundSprite,
+                    isOnBoarder ? GridTile.TileType.Boarder : GridTile.TileType.Normal,
+                    tilesParent);
+            };
+            context.Grid.CreateGrid(GridSize, TileSize, gameTileConstructor);
+            widthSlider = tilesParent.position + Vector3.right * (GridWidth * TileWidth);
+            heightSlider = tilesParent.position + Vector3.up * (GridHeight * TileHeight);
         }
     }
     protected virtual void OnSceneGUI() {
-        if (nodes == null && grid != null)
+        if (gizmoTiles == null && grid != null)
             grid.GetGridTiles();
-        if (nodes != null && nodes.Length > 0) {
-            if (lastNode == null) lastNode = nodes[0, 0];  // Assing last node as the start if null
+        if (gizmoTiles != null && gizmoTiles.Length > 0) {
+            if (lastNode == null) lastNode = gizmoTiles[0, 0];  // Assing last node as the start if null
             int w = 0, h = 0;
-            while (w < Width) {
+            while (w < GridWidth) {
                 try {
-                    NodeRectangle_Gizmo cube = nodes[w, h] as NodeRectangle_Gizmo;
+                    NodeRectangle_Gizmo cube = gizmoTiles[w, h] as NodeRectangle_Gizmo;
                     if (Handles.Button(cube.GetPosition, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw) && cube.CanBeNavigated) {
-                        List<NodeRectangle_Gizmo> path = pathfinding.GetPath(lastNode, nodes[cube.W, cube.H], nodes);
+                        List<NodeRectangle_Gizmo> path = Pathfinding<NodeRectangle_Gizmo>.GetPath(lastNode, gizmoTiles[cube.W, cube.H], gizmoTiles);
                         if (path != null) {
                             lastNode = path[path.Count - 1];
                             if (debugCoroutine != null)
@@ -70,15 +85,15 @@ public class Grid_Editor : Editor {
                         }
                     }
                     h++;
-                    if (h >= Height) { h = 0; w++; }
+                    if (h >= GridHeight) { h = 0; w++; }
                 }
                 catch {
                     return;
                 }
 
             }
-            DrawSlider(ref widthSlider, Vector3.right, size: Length * 4, step: 1f);
-            DrawSlider(ref heightSlider, Vector3.up, size: Length * 4, step: 1f);
+            DrawSlider(ref widthSlider, Vector3.right, size: TileWidth * 4, step: 1f);
+            DrawSlider(ref heightSlider, Vector3.up, size: TileHeight * 4, step: 1f);
         }
         HandleUtility.Repaint();
     }
@@ -87,30 +102,16 @@ public class Grid_Editor : Editor {
     #region Custom Inspector
     public override void OnInspectorGUI() {
         base.OnInspectorGUI();
-        AssignGridValuesFromInspector();
+        tilesParent = EditorGUILayout.ObjectField(tilesParent, typeof(Transform), true) as Transform;
+        boarderSprite = EditorGUILayout.ObjectField(boarderSprite, typeof(Sprite), true) as Sprite;
+        backgroundSprite = EditorGUILayout.ObjectField(backgroundSprite, typeof(Sprite), true) as Sprite;
         DrawInspectorButtons();
     }
-    private void AssignGridValuesFromInspector() {
-        // Width
-        int value = EditorGUILayout.IntField(Width);
-        if (value != Width)
-            grid.SetWidthFromEditor(value);
-        // Height
-        value = EditorGUILayout.IntField(Height);
-        if (value != Height)
-            grid.SetHeightFromEditor(value);
-        // Length
-        value = EditorGUILayout.IntField(Length);
-        if (value != Length)
-            grid.SetLengthFromEditor(value);
-    }
+
     private void DrawInspectorButtons() {
-        if (GUILayout.Button("Build Grid"))
-            BuildGrid();
-        if (GUILayout.Button("Clear nodes"))
-            grid.ClearNodes();
-        if (GUILayout.Button("Return sphere"))
-            debugSphere.transform.position = tilesParent.position;
+        if (GUILayout.Button("Build Grid")) BuildGrid();
+        if (GUILayout.Button("Clear nodes")) grid.ClearNodes();
+        if (GUILayout.Button("Return sphere")) debugSphere.transform.position = tilesParent.position;
     }
     #endregion
 
@@ -118,19 +119,13 @@ public class Grid_Editor : Editor {
     private void DrawSlider(ref Vector3 sliderValue, Vector3 direction, float size, float step) {
 
         Vector3 newValue = Handles.Slider(sliderValue, direction, size, Handles.ArrowHandleCap, step);
-        if (direction.x > 0 && Mathf.Abs(newValue.x - sliderValue.x) > 0.9f && (int)sliderValue.x / Length > 1) {
+        if (direction.x > 0 && Mathf.Abs(newValue.x - sliderValue.x) > 0.9f && (int)sliderValue.x / TileWidth > 1
+           || Mathf.Abs(newValue.y - sliderValue.y) > 0.9f && (int)sliderValue.y / TileHeight > 1) {
             sliderValue = newValue;
-            if ((int)widthSlider.x / Length > 0)
-                grid.SetWidthFromEditor((int)widthSlider.x / Length);
+            if ((int)widthSlider.x / TileWidth > 0 || (int)heightSlider.y / TileHeight > 0)
+                context.GridSize = new Vector2Int((int)widthSlider.x / TileWidth, (int)heightSlider.y / TileHeight);
             BuildGrid();
         }
-        else if (Mathf.Abs(newValue.y - sliderValue.y) > 0.9f && (int)sliderValue.y / Length > 1) {
-            sliderValue = newValue;
-            if ((int)heightSlider.y / Length > 0)
-                grid.SetHeightFromEditor((int)heightSlider.y / Length);
-            BuildGrid();
-        }
-
     }
     private IEnumerator SendDebugShpere(Transform sphere, List<NodeRectangle_Gizmo> targets, float speed) {
         while (targets.Count > 0) {

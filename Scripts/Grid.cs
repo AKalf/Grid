@@ -3,93 +3,59 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Grid<TTile> {
-    [SerializeField] public List<Pathfinding.IGridTile<TTile>> NodeCubes = new List<Pathfinding.IGridTile<TTile>>();
+public class Grid<TTile> where TTile : Pathfinding<TTile>.IGridTile {
 
-    [SerializeField, HideInInspector] private List<GameObject> gridObjects = new List<GameObject>();
+    public Vector2Int GridSize { get; private set; }
+    public Vector2Int TileSize { get; private set; }
+    public int GridWidth => GridSize.x;
+    public int GridHeight => GridSize.y;
+    public int TileWidth => TileSize.x;
+    public int TileHeight => TileSize.y;
 
-    [SerializeField] private Transform tilesParent = null;
+    public List<TTile> Tiles = new List<TTile>();
 
-    [SerializeField] private Sprite backgroundSprite, borderSprite;
 
-    [SerializeField] private int width = 0, height = 0, tileLength = 0;
 
-    private Pathfinding.IGridTile<TTile>[,] nodesOnGrid = null;
-    public Pathfinding.IGridTile<TTile>[,] NodesOnGrid { get => nodesOnGrid; private set => nodesOnGrid = value; }
+    private TTile[,] nodesOnGrid = null;
+    public TTile[,] NodesOnGrid { get => nodesOnGrid; private set => nodesOnGrid = value; }
 
-    public int Width => width;
-    public int Height => height;
-    public int Length => tileLength;
+    public Grid(int gridWidth, int gridHeight, int tileWidth, int tileHeight) {
+        this.GridSize = new Vector2Int(gridWidth, gridHeight); this.TileSize = new Vector2Int(tileWidth, tileHeight);
+    }
 
-    public Grid(int width, int height, int tileLength, Transform tilesParent = null, Sprite backgroundSprite = null, Sprite borderSprite = null) {
-        this.width = width; this.height = height; this.tileLength = tileLength;
-        this.tilesParent = tilesParent;
-        this.backgroundSprite = backgroundSprite; this.borderSprite = borderSprite;
+    public Grid(Vector2Int gridSize, Vector2Int tileSize, Transform tilesParent = null, Sprite backgroundSprite = null, Sprite borderSprite = null) {
+        this.GridSize = gridSize; this.TileSize = tileSize;
     }
 
 
     public void ClearNodes() {
-
-        NodeCubes.Clear();
+        Tiles.Clear();
         NodesOnGrid = null;
     }
-    public void CreateGrid() {
-
+    public void CreateGrid(Vector2Int gridSize, Vector2Int tileSize, Func<int, int, TTile> tileConstructor) {
         ClearNodes();
-        foreach (var node in gridObjects)
-            MonoBehaviour.DestroyImmediate(node);
-        gridObjects.Clear();
-        NodesOnGrid = new Pathfinding.IGridTile<TTile>[width, height];
-    }
-    public void CreateTileForGrid(int w, int h, Func<Pathfinding.IGridTile<TTile>> tileConstructor, Vector3 startingPosition, Vector3 tileSize) {
-        if (NodesOnGrid == null)
-            return;
-        Pathfinding.IGridTile<TTile> newGizmo = tileConstructor.Invoke();
-        newGizmo.CanBeNavigated = true;
-        NodeCubes.Add(newGizmo);
-        NodesOnGrid[w, h] = newGizmo;
-        GameObject newGamboject = new GameObject();
-        newGamboject.name = "X: " + w + " H: " + h;
-        newGamboject.transform.position = startingPosition + new Vector3(w * tileSize.x, h * tileSize.y, 0);
-        newGamboject.transform.parent = tilesParent;
-        gridObjects.Add(newGamboject);
-        SpriteRenderer renderer = newGamboject.AddComponent<SpriteRenderer>();
-        if (w == 0 || h == 0 || w == NodesOnGrid.GetLength(0) - 1 || h == NodesOnGrid.GetLength(1) - 1 || (w == 5 && h != 2)) {
-            newGizmo.CanBeNavigated = false;
-            renderer.sprite = backgroundSprite;
-            renderer.color = Color.black;
-            newGamboject.AddComponent<PolygonCollider2D>();
+        GridSize = gridSize;
+        TileSize = tileSize;
+        NodesOnGrid = new TTile[GridWidth, GridHeight];
+        for (int w = 0; w < GridWidth; w++) {
+            for (int h = 0; h < GridHeight; h++) {
+                TTile newTile = tileConstructor.Invoke(w, h);
+                Tiles.Add(newTile);
+                NodesOnGrid[w, h] = newTile;
+            }
         }
-        else
-            renderer.sprite = backgroundSprite;
-
     }
-    public Pathfinding.IGridTile<TTile>[,] GetGridTiles() {
-        if (NodeCubes == null || NodeCubes.Count == 0)
+
+    public TTile[,] GetGridTiles() {
+        if (Tiles == null || Tiles.Count == 0)
             return null;
-        if (NodesOnGrid == null && NodeCubes != null && NodeCubes.Count > 0) {
-            foreach (Pathfinding.IGridTile<TTile> cube in NodeCubes)
+        if (NodesOnGrid == null && Tiles != null && Tiles.Count > 0) {
+            foreach (TTile cube in Tiles)
                 NodesOnGrid[cube.W, cube.H] = cube;
         }
         return NodesOnGrid;
     }
 
-    // Editor Functions
-    #region Editor Functions
-#if UNITY_EDITOR
-    /// <summary> SHOULD ONLY BE CALLED FROM INSIDE UNITY_EDITOR DIRECTIVE</summary>
-    public void SetWidthFromEditor(int width) {
-        this.width = width;
-    }
-    /// <summary> SHOULD ONLY BE CALLED FROM INSIDE UNITY_EDITOR DIRECTIVE</summary>
-    public void SetHeightFromEditor(int height) {
-        this.height = height;
-    }
-    /// <summary> SHOULD ONLY BE CALLED FROM INSIDE UNITY_EDITOR DIRECTIVE</summary>
-    public void SetLengthFromEditor(int length) {
-        this.tileLength = length;
-    }
-#endif
-    #endregion
+
 
 }

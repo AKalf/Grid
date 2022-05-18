@@ -7,7 +7,7 @@ using UnityEditor.EditorTools;
 using UnityEngine;
 
 
-public class NodeRectangle_Gizmo : Pathfinding.IGridTile<NodeRectangle_Gizmo> {
+public class NodeRectangle_Gizmo : Pathfinding<NodeRectangle_Gizmo>.IGridTile {
     // Variables       
     #region Variables
     private int widthIndex = 0, heightIndex = 0;
@@ -25,16 +25,18 @@ public class NodeRectangle_Gizmo : Pathfinding.IGridTile<NodeRectangle_Gizmo> {
     public int W { get => widthIndex; set => widthIndex = value; }
     public int H { get => heightIndex; set => heightIndex = value; }
     public Vector3 GetPosition => Position;
+    public Vector3 GetSize => Size;
     public int WalkingCost { get; set; }
     public int HeuristicCost { get; set; }
     public int TotalCost => WalkingCost + HeuristicCost;
-    public Pathfinding.IGridTile<NodeRectangle_Gizmo> CameFrom { get; set; }
+    public Pathfinding<NodeRectangle_Gizmo>.IGridTile CameFrom { get; set; }
     public bool CanBeNavigated { get; set; }
     public GameObject gameObject { get => null; set { } }
 
 
+
     #endregion
-    public NodeRectangle_Gizmo(int w, int h, Vector3 cubePos, Vector3 cubeSize, Vector3 labelPos, string label, Color cubeColor = default, Color labelColor = default) {
+    public NodeRectangle_Gizmo(int w, int h, Vector3 position, Vector2Int tileSize, string label, Color cubeColor = default, Color labelColor = default) {
         this.widthIndex = w;
         this.heightIndex = h;
 
@@ -42,9 +44,9 @@ public class NodeRectangle_Gizmo : Pathfinding.IGridTile<NodeRectangle_Gizmo> {
         this.HeuristicCost = 0;
         this.CameFrom = null;
 
-        this.Position = cubePos;
-        this.Size = cubeSize;
-        this.LabelPosition = labelPos;
+        this.Position = position;
+        this.Size = (Vector2)tileSize;
+        this.LabelPosition = this.Position + new Vector3(-(tileSize.x / 4 + 0.4f), tileSize.y / 10 + 0.2f, 0);
         this.Label = label;
         this.Original = cubeColor;
         this.CubeColor = cubeColor;
