@@ -5,13 +5,13 @@ using Unity.EditorCoroutines.Editor;
 using UnityEditor;
 using UnityEngine;
 using IGridTile = Pathfinding.IGridTile;
-[CustomEditor(typeof(GridSpace))]
+[CustomEditor(typeof(Room))]
 public class Grid_Editor : Editor {
 
     private Grid gizmoGrid = null;
     private Grid gameGrid = null;
 
-    private GridSpace context = null;
+    private Room context = null;
 
     private IGridTile lastNode = null;
 
@@ -26,6 +26,7 @@ public class Grid_Editor : Editor {
     private int TileWidth => TileSize.x;
     private int TileHeight => TileSize.y;
     #endregion
+    /***********************************/
     private IGridTile[,] gizmoTiles => gizmoGrid.NodesOnGrid;
     private Transform tilesParent => context.transform;
 
@@ -34,13 +35,9 @@ public class Grid_Editor : Editor {
     private EditorCoroutine debugCoroutine = null;
     #endregion
 
-    private GameObject normalTilePrefab { get => context.NavigatableTilePrefab; set => context.NavigatableTilePrefab = value; }
-    private GameObject boarderTilePrefab { get => context.NonNavigatableTilePrefab; set => context.NonNavigatableTilePrefab = value; }
-
-
 
     private void OnEnable() {
-        context = target as GridSpace;
+        context = target as Room;
 
         if (debugSphere == null) debugSphere = GameObject.FindObjectOfType<SphereController>();
         if (context.Tiles.Count == 0) return;
@@ -69,19 +66,13 @@ public class Grid_Editor : Editor {
                 bool isOnBoarder = w == 0 || h == 0 || w == GridSize.x - 1 || h == GridSize.y - 1;
                 return new GridTile(w, h, context, isOnBoarder ? TileType.NonNavigatable : TileType.Navigatable, tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0), (Vector3Int)TileSize);
             });
-            //int index = 0;
-            //gizmoGrid.BuildGrid(GridSize, TileSize, (w, h) => {
-            //    NodeRectangle_Gizmo<GridTile> newGizmo = NodeRectangle_Gizmo<GridTile>.CreateNew(context.Tiles[index], GridSize);
-            //    index++;
-            //    return newGizmo;
-            //});
-
         }
     }
 
     protected virtual void OnSceneGUI() {
         if (context.Tiles.Count == 0) return;
-        if (gameGrid != null && gizmoTiles != null && gizmoTiles.Length > 0) {
+        if (gizmoGrid != null && gizmoTiles != null && gizmoTiles.Length > 0) {
+
             if (lastNode == null) lastNode = gizmoTiles[0, 0];  // Assing last node as the start if null
             int w = 0, h = 0;
             while (w < GridWidth) {

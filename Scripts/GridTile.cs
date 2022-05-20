@@ -7,7 +7,7 @@ public struct GridTile : Pathfinding.IGridTile {
 
     private Vector3Int position, size;
     public GameObject thisGameObject, objectOnTile;
-    private GridSpace context;
+    private Room context;
     private TileType tileType;
     private int w, h;
 
@@ -34,7 +34,7 @@ public struct GridTile : Pathfinding.IGridTile {
     /// <param name="newType">Tile type</param>
     /// <param name="position">Position on world</param>
     /// <param name="tileSize">Tile size</param>
-    public GridTile(int w, int h, GridSpace context, TileType newType, Vector3 position, Vector3Int tileSize) {
+    public GridTile(int w, int h, Room context, TileType newType, Vector3 position, Vector3Int tileSize) {
         this.context = context;
         this.w = w; this.h = h;
         this.position = new Vector3Int((int)position.x, (int)position.y, (int)position.z);
@@ -50,7 +50,6 @@ public struct GridTile : Pathfinding.IGridTile {
         if (newType == TileType.Navigatable) {
             CanBeNavigated = true;
             objectToSpawn = context.NavigatableTilePrefab;
-
         }
         else if (newType == TileType.NonNavigatable) {
             CanBeNavigated = false;
@@ -58,7 +57,6 @@ public struct GridTile : Pathfinding.IGridTile {
         }
         else if (newType == TileType.Gate) {
             CanBeNavigated = true;
-
             objectToSpawn = context.GateTilePrefab;
         }
         if (Application.isPlaying == false) thisGameObject = UnityEditor.PrefabUtility.InstantiatePrefab(objectToSpawn) as GameObject;
@@ -79,6 +77,7 @@ public struct GridTile : Pathfinding.IGridTile {
 
     public void SetTileType(TileType newType) {
         if (newType == tileType) return;
+        if (context == null) Debug.LogError("Grid-space context for tile is null. Can not update tile's gameObject");
 
         if (tileType == TileType.Gate && context.Gates.Contains(this)) context.Gates.Remove(this);
         if (Application.isPlaying == true && thisGameObject != null) MonoBehaviour.Destroy(thisGameObject);
