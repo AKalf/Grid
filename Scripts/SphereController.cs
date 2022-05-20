@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class SphereController : MonoBehaviour {
-    public Transform trans = null;
+    [HideInInspector] public Transform trans = null;
     // Start is called before the first frame update
     void Start() {
 

@@ -34,8 +34,8 @@ public class Grid_Editor : Editor {
     private EditorCoroutine debugCoroutine = null;
     #endregion
 
-    private Sprite backgroundSprite { get => context.BackgroundSprite; set => context.BackgroundSprite = value; }
-    private Sprite boarderSprite { get => context.BoarderSprite; set => context.BoarderSprite = value; }
+    private GameObject normalTilePrefab { get => context.NavigatableTilePrefab; set => context.NavigatableTilePrefab = value; }
+    private GameObject boarderTilePrefab { get => context.NonNavigatableTilePrefab; set => context.NonNavigatableTilePrefab = value; }
 
 
 
@@ -43,52 +43,63 @@ public class Grid_Editor : Editor {
         context = target as GridSpace;
 
         if (debugSphere == null) debugSphere = GameObject.FindObjectOfType<SphereController>();
-
+        if (context.Tiles.Count == 0) return;
         // Initialise Grids
         if (gizmoGrid == null || gameGrid == null) {
-            gizmoGrid = new Grid(GridSize, TileSize, tilesParent);
-            gameGrid = new Grid(GridSize, TileSize, tilesParent, backgroundSprite, boarderSprite);
-            gizmoGrid.ClearNodes();
-            gizmoGrid.CreateGrid(GridSize, TileSize, (w, h) => NodeRectangle_Gizmo.CreateNew(w, h, tilesParent, GridSize, TileSize));
+            gizmoGrid = new Grid(GridSize, TileSize);
+            int index = 0;
+            gizmoGrid.BuildGrid(GridSize, TileSize, (w, h) => {
+                NodeRectangle_Gizmo<GridTile> newGizmo = NodeRectangle_Gizmo<GridTile>.CreateNew(context.Tiles[index], GridSize);
+                index++;
+                return newGizmo;
+            });
         }
 
 
     }
     private void BuildGrid() {
         if (GridSize.x > 0 && GridSize.y > 0 && TileSize.x > 0 && TileSize.y > 0) {
-            gizmoGrid.ClearNodes();
-            gizmoGrid.CreateGrid(GridSize, TileSize, (w, h) => NodeRectangle_Gizmo.CreateNew(w, h, tilesParent, GridSize, TileSize));
-
-            gameGrid.ClearNodes();
+            if (gameGrid == null) gameGrid = new Grid(GridSize, TileSize);
             foreach (GridTile tile in context.Tiles) {
                 if (tile.thisGameObject != null) DestroyImmediate(tile.thisGameObject);
             }
             context.Tiles.Clear();
-            gameGrid.CreateGrid(GridSize, TileSize, (w, h) => GridTile.CreateNew(w, h, tilesParent, GridSize, TileSize, context, backgroundSprite, boarderSprite));
+
+            gameGrid.BuildGrid(GridSize, TileSize, (w, h) => {
+                bool isOnBoarder = w == 0 || h == 0 || w == GridSize.x - 1 || h == GridSize.y - 1;
+                return new GridTile(w, h, context, isOnBoarder ? TileType.NonNavigatable : TileType.Navigatable, tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0), (Vector3Int)TileSize);
+            });
+            //int index = 0;
+            //gizmoGrid.BuildGrid(GridSize, TileSize, (w, h) => {
+            //    NodeRectangle_Gizmo<GridTile> newGizmo = NodeRectangle_Gizmo<GridTile>.CreateNew(context.Tiles[index], GridSize);
+            //    index++;
+            //    return newGizmo;
+            //});
 
         }
     }
 
     protected virtual void OnSceneGUI() {
-        if (gizmoTiles != null && gizmoTiles.Length > 0) {
+        if (context.Tiles.Count == 0) return;
+        if (gameGrid != null && gizmoTiles != null && gizmoTiles.Length > 0) {
             if (lastNode == null) lastNode = gizmoTiles[0, 0];  // Assing last node as the start if null
             int w = 0, h = 0;
             while (w < GridWidth) {
                 try {
-                    NodeRectangle_Gizmo cube = gizmoTiles[w, h] as NodeRectangle_Gizmo;
-                    if (Handles.Button(cube.GetPosition, Quaternion.identity, cube.Size.x / 2, cube.Size.x / 2, cube.Draw) && cube.CanBeNavigated) {
-                        List<IGridTile> path = Pathfinding.GetPath(lastNode, gizmoTiles[cube.W, cube.H], gizmoTiles);
+                    NodeRectangle_Gizmo<GridTile> gizmoTile = gizmoTiles[w, h] as NodeRectangle_Gizmo<GridTile>;
+                    if (Handles.Button(gizmoTile.GetPosition, Quaternion.identity, gizmoTile.GetSize.x / 2, gizmoTile.GetSize.y / 2, gizmoTile.Draw) && gizmoTile.CanBeNavigated) {
+                        List<IGridTile> path = Pathfinding.GetPath(lastNode, gizmoTile, gizmoTiles);
                         if (path != null) {
                             lastNode = path[path.Count - 1];
-                            if (debugCoroutine != null)
-                                EditorCoroutineUtility.StopCoroutine(debugCoroutine);
+                            if (debugCoroutine != null) EditorCoroutineUtility.StopCoroutine(debugCoroutine);
                             debugCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(SendDebugShpere(debugSphere.transform, path, 0.2f));
                         }
                     }
                     h++;
                     if (h >= GridHeight) { h = 0; w++; }
                 }
-                catch {
+                catch (Exception ex) {
+                    Debug.LogError(ex);
                     return;
                 }
 
@@ -129,10 +140,10 @@ public class Grid_Editor : Editor {
     }
     private IEnumerator SendDebugShpere(Transform sphere, List<IGridTile> targets, float speed) {
         while (targets.Count > 0) {
-            NodeRectangle_Gizmo target = targets[0] as NodeRectangle_Gizmo;
+            NodeRectangle_Gizmo<GridTile> target = targets[0] as NodeRectangle_Gizmo<GridTile>;
             target.ChangeNodeColor(Color.red, 0.01f * speed);
-            while (Vector3.Distance(sphere.position, target.Position) > 0.25f) {
-                sphere.position = Vector3.MoveTowards(sphere.position, target.Position, speed);
+            while (Vector3.Distance(sphere.position, target.GetPosition) > 0.25f) {
+                sphere.position = Vector3.MoveTowards(sphere.position, target.GetPosition, speed);
                 yield return new EditorWaitForSeconds(0.01f);
             }
             targets.Remove(target);

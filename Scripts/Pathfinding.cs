@@ -8,9 +8,7 @@ public class Pathfinding {
     private const int MOVE_STRAIGHT_COST = 10;
     private const int MOVE_DIAGONAL_COST = 12;
 
-
     public static List<IGridTile> GetPath(IGridTile startingNode, IGridTile endNode, IGridTile[,] nodes) {
-
         List<IGridTile> _openList = new List<IGridTile>(), _closedList = new List<IGridTile>();
         _openList.Clear();
         _closedList.Clear();
@@ -27,8 +25,7 @@ public class Pathfinding {
         startingNode.HeuristicCost = CalculateDistanceCost(startingNode, endNode);
         while (_openList.Count > 0) {
             IGridTile current = GetLowestTotalCostNode(_openList);
-            if (current.Equals(endNode))
-                return CalculatePathResult(endNode);
+            if (current.Equals(endNode)) return CalculatePathResult(endNode);
             _openList.Remove(current);
             _closedList.Add(current);
             foreach (IGridTile neighbour in GetNeigbours(current, nodes)) {
@@ -39,8 +36,7 @@ public class Pathfinding {
                     neighbour.CameFrom = current;
                     neighbour.WalkingCost = tentativeWalkingCost;
                     neighbour.HeuristicCost = CalculateDistanceCost(neighbour, endNode);
-                    if (_openList.Contains(neighbour) == false)
-                        _openList.Add(neighbour);
+                    if (_openList.Contains(neighbour) == false) _openList.Add(neighbour);
                 }
             }
         }
@@ -78,8 +74,8 @@ public class Pathfinding {
         path.Add(endNode);
         IGridTile current = endNode;
         while (current.CameFrom != null) {
-            path.Add((IGridTile)current.CameFrom);
-            current = (IGridTile)current.CameFrom;
+            path.Add(current.CameFrom);
+            current = current.CameFrom;
         }
         path.Reverse();
         return path;

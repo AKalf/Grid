@@ -1,42 +1,22 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+public enum TileType { Undefined, Gate, NonNavigatable, Navigatable }
 [System.Serializable]
 public struct GridTile : Pathfinding.IGridTile {
-    public static GridTile CreateNew(int w, int h, Transform tilesParent, Vector2Int GridSize, Vector2Int TileSize, GridSpace context, Sprite backgroundSprite, Sprite boardSprite) {
-        bool isOnBoarder = w == 0 || h == 0 || w == GridSize.x - 1 || h == GridSize.y - 1;
-        GridTile newTile = new GridTile(w, h,
-            tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0),
-            (Vector3Int)TileSize,
-            isOnBoarder ? boardSprite : backgroundSprite,
-            isOnBoarder ? GridTile.TileType.Boarder : GridTile.TileType.Normal,
-            tilesParent);
-        context.Tiles.Add(newTile);
-        newTile.thisGameObject.AddComponent<TileWrapper>().tile = newTile;
-        SpriteRenderer renderer = newTile.thisGameObject.AddComponent<SpriteRenderer>();
-        if (newTile.tileType == TileType.Boarder) {
-            renderer.sortingOrder = 1;
-            newTile.CanBeNavigated = false;
-            renderer.color = Color.black;
-            BoxCollider2D collider = newTile.thisGameObject.AddComponent<BoxCollider2D>();
-            collider.size = Vector2.one;
-        }
-        else
-            newTile.CanBeNavigated = true;
-        renderer.sprite = newTile.Sprite;
-        return newTile;
-    }
 
-    public enum TileType { Entrance, Exit, Boarder, Normal }
-    private Vector3Int position;
-    private Vector3Int size;
-    public Sprite Sprite;
+    private Vector3Int position, size;
     public GameObject thisGameObject, objectOnTile;
-    public TileType tileType;
+    private GridSpace context;
+    private TileType tileType;
+    private int w, h;
 
-    public int W { get => position.x; set => position.x = value; }
-    public int H { get => position.y; set => position.y = value; }
+    // Properties
+    #region Properties and IGridTile implementation
+    public TileType TypeOfTile => tileType;
+
+    public int W { get => w; set => w = value; }
+    public int H { get => h; set => h = value; }
 
     public Vector3 GetPosition => position;
     public Vector3 GetSize => size;
@@ -47,23 +27,90 @@ public struct GridTile : Pathfinding.IGridTile {
     public bool CanBeNavigated { get; set; }
     public Pathfinding.IGridTile CameFrom { get; set; }
     public GameObject GameObject { get => thisGameObject; set => thisGameObject = value; }
-
-    public GridTile(int w, int h, Vector3 position, Vector3Int tileSize, Sprite sprite, TileType type, Transform parent) {
+    #endregion
+    /// <summary>Constructor for new instance</summary>
+    /// <param name="w">W position on grid</param> <param name="h">H position on grid</param>
+    /// <param name="context">The grid space that it belongs</param>
+    /// <param name="newType">Tile type</param>
+    /// <param name="position">Position on world</param>
+    /// <param name="tileSize">Tile size</param>
+    public GridTile(int w, int h, GridSpace context, TileType newType, Vector3 position, Vector3Int tileSize) {
+        this.context = context;
+        this.w = w; this.h = h;
         this.position = new Vector3Int((int)position.x, (int)position.y, (int)position.z);
         this.size = tileSize;
-        this.Sprite = sprite;
-        this.tileType = type;
-        this.thisGameObject = new GameObject();
-        this.thisGameObject.name = "X: " + position.x + " H: " + position.y;
-        this.thisGameObject.transform.position = position;
-        this.thisGameObject.transform.parent = parent;
-        this.thisGameObject.transform.localScale = tileSize;
-
+        this.thisGameObject = null;
         this.objectOnTile = null;
-
         WalkingCost = 0;
         HeuristicCost = 0;
         CanBeNavigated = true;
         CameFrom = null;
+        GameObject objectToSpawn = null;
+
+        if (newType == TileType.Navigatable) {
+            CanBeNavigated = true;
+            objectToSpawn = context.NavigatableTilePrefab;
+
+        }
+        else if (newType == TileType.NonNavigatable) {
+            CanBeNavigated = false;
+            objectToSpawn = context.NonNavigatableTilePrefab;
+        }
+        else if (newType == TileType.Gate) {
+            CanBeNavigated = true;
+
+            objectToSpawn = context.GateTilePrefab;
+        }
+        if (Application.isPlaying == false) thisGameObject = UnityEditor.PrefabUtility.InstantiatePrefab(objectToSpawn) as GameObject;
+        else thisGameObject = MonoBehaviour.Instantiate(objectToSpawn);
+        thisGameObject.name = "X: " + w + " H: " + h;
+        thisGameObject.transform.position = position;
+        thisGameObject.transform.parent = context.transform;
+        thisGameObject.transform.localScale = size;
+
+        this.tileType = newType;
+
+        context.Tiles.Add(this);
+        if (tileType == TileType.Gate) context.Gates.Add(this);
+        TileWrapper wrapper = thisGameObject.GetComponent<TileWrapper>();
+        if (wrapper != null) wrapper.SetTile(this);
+        else thisGameObject.AddComponent<TileWrapper>().SetTile(this);
+    }
+
+    public void SetTileType(TileType newType) {
+        if (newType == tileType) return;
+
+        if (tileType == TileType.Gate && context.Gates.Contains(this)) context.Gates.Remove(this);
+        if (Application.isPlaying == true && thisGameObject != null) MonoBehaviour.Destroy(thisGameObject);
+        else if (thisGameObject != null) MonoBehaviour.DestroyImmediate(thisGameObject);
+        GameObject objectToSpawn = null;
+
+        if (newType == TileType.Navigatable) {
+            CanBeNavigated = true;
+            objectToSpawn = context.NavigatableTilePrefab;
+
+        }
+        else if (newType == TileType.NonNavigatable) {
+            CanBeNavigated = false;
+            objectToSpawn = context.NonNavigatableTilePrefab;
+        }
+        else if (newType == TileType.Gate) {
+            CanBeNavigated = true;
+            if (tileType == TileType.Gate && context.Gates.Contains(this) == false) context.Gates.Add(this);
+            objectToSpawn = context.GateTilePrefab;
+        }
+        if (Application.isPlaying == false) thisGameObject = UnityEditor.PrefabUtility.InstantiatePrefab(objectToSpawn) as GameObject;
+        else thisGameObject = MonoBehaviour.Instantiate(objectToSpawn);
+        thisGameObject.name = "X: " + w + " H: " + h;
+        thisGameObject.transform.position = GetPosition;
+        thisGameObject.transform.parent = context.transform;
+        thisGameObject.transform.localScale = GetSize;
+
+        this.tileType = newType;
+
+        context.Tiles.Add(this);
+        TileWrapper wrapper = thisGameObject.GetComponent<TileWrapper>();
+        if (wrapper != null) wrapper.SetTile(this);
+        else thisGameObject.AddComponent<TileWrapper>().SetTile(this);
     }
 }

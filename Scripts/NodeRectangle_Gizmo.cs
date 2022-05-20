@@ -5,62 +5,62 @@ using UnityEditor;
 using UnityEngine;
 
 
-public class NodeRectangle_Gizmo : Pathfinding.IGridTile {
+public class NodeRectangle_Gizmo<TTile> : Pathfinding.IGridTile where TTile : Pathfinding.IGridTile {
 
-    public static NodeRectangle_Gizmo CreateNew(int w, int h, Transform tilesParent, Vector2Int GridSize, Vector2Int TileSize) {
-        return new NodeRectangle_Gizmo(w, h,
-                   tilesParent.position + new Vector3(w * TileSize.x, h * TileSize.y, 0),
-                   TileSize,
-                   "X: " + w + "\nY: " + h,
-                   (w == 0 || w == GridSize.x - 1 || h == 0 || h == GridSize.y - 1) ? GridTile.TileType.Boarder : GridTile.TileType.Normal,
-                   Color.white, Color.black);
+    public static NodeRectangle_Gizmo<TTile> CreateNew(TTile targetTile, Vector2Int GridSize) {
+        return new NodeRectangle_Gizmo<TTile>(
+            targetTile,
+            (targetTile.W == 0 || targetTile.W == GridSize.x - 1
+            ||
+            targetTile.H == 0 || targetTile.H == GridSize.y - 1) ?
+            TileType.NonNavigatable : TileType.Navigatable,
+            "X: " + targetTile.W + "\nY: " + targetTile.H,
+            Color.white, Color.black);
     }
+
     // Variables       
     #region Variables
-    private int widthIndex = 0, heightIndex = 0;
-    public Vector3 Position = Vector3.zero, Size = Vector3.zero, LabelPosition = Vector3.zero;
+
+    public Vector3 LabelPosition = Vector3.zero;
     public Color Original = Color.white, TileGizmoColor = Color.white, LabelColor = Color.black;
     public string Label = "";
-    [NonSerialized]
     private EditorCoroutine nodeCoroutine = null, lineCoroutine = null;
-
+    TTile targetTile;
     public enum LineDirection { Upper, Right, }
     #endregion
 
     // INode Implementation
     #region INode implementation
-    public int W { get => widthIndex; set => widthIndex = value; }
-    public int H { get => heightIndex; set => heightIndex = value; }
-    public Vector3 GetPosition => Position;
-    public Vector3 GetSize => Size;
-    public int WalkingCost { get; set; }
-    public int HeuristicCost { get; set; }
-    public int TotalCost => WalkingCost + HeuristicCost;
-    public Pathfinding.IGridTile CameFrom { get; set; }
-    public bool CanBeNavigated { get; set; }
-    public GameObject GameObject { get => null; set { } }
+    public int W { get => targetTile.W; set => targetTile.W = value; }
+    public int H { get => targetTile.H; set => targetTile.H = value; }
+    public Vector3 GetPosition => targetTile.GetPosition;
+    public Vector3 GetSize => targetTile.GetSize;
+    public int WalkingCost { get => targetTile.WalkingCost; set => targetTile.WalkingCost = value; }
+    public int HeuristicCost { get => targetTile.HeuristicCost; set => targetTile.HeuristicCost = value; }
+    public int TotalCost => targetTile.TotalCost;
+    public Pathfinding.IGridTile CameFrom { get => targetTile.CameFrom; set => targetTile.CameFrom = value; }
+    public bool CanBeNavigated { get => targetTile.CanBeNavigated; set => targetTile.CanBeNavigated = value; }
+    public GameObject GameObject { get => targetTile.GameObject; set => targetTile.GameObject = value; }
 
 
 
     #endregion
-    public NodeRectangle_Gizmo(int w, int h, Vector3 position, Vector2Int tileSize, string label, GridTile.TileType tileType, Color tileGizmoColor = default, Color labelColor = default) {
-        this.widthIndex = w;
-        this.heightIndex = h;
+    private NodeRectangle_Gizmo(TTile targetTile, TileType tileType, string label, Color tileGizmoColor = default, Color labelColor = default) {
+
+        this.targetTile = targetTile;
 
         this.WalkingCost = int.MaxValue;
         this.HeuristicCost = 0;
         this.CameFrom = null;
 
-        this.Position = position;
-        this.Size = (Vector2)tileSize;
-        this.LabelPosition = this.Position + new Vector3(-(tileSize.x / 4 + 0.4f), tileSize.y / 10 + 0.2f, 0);
+        this.LabelPosition = this.GetPosition + new Vector3(-(this.GetSize.x / 10 + 0.2f), this.GetSize.y / 10 + 0.2f, 0);
         this.Label = label;
+
         this.Original = tileGizmoColor;
         this.TileGizmoColor = tileGizmoColor;
 
-        if (tileType == GridTile.TileType.Normal) this.LabelColor = labelColor;
+        if (tileType == TileType.Navigatable) this.LabelColor = labelColor;
         else this.LabelColor = Color.white;
-
 
         nodeCoroutine = null;
         lineCoroutine = null;
@@ -80,7 +80,7 @@ public class NodeRectangle_Gizmo : Pathfinding.IGridTile {
         if (Camera.current != null && string.IsNullOrEmpty(Label) == false) {
             GUIStyle style = new GUIStyle(GUIStyle.none);
             style.normal.textColor = this.LabelColor;
-            int fontSize = (int)(30 - Mathf.Abs(Camera.current.transform.position.z - Position.z)); // a magic number who has the desired effect at 1920x1080 resolution
+            int fontSize = (int)(30 - Mathf.Abs(Camera.current.transform.position.z - GetPosition.z)); // a magic number who has the desired effect at 1920x1080 resolution
             if (fontSize > 6) { // magic number
                 if (fontSize > 16) // magic condition
                     fontSize = 16;

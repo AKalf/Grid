@@ -13,14 +13,9 @@ public class TileWrapper_Editor : Editor {
         tile = (TileWrapper)target;
     }
     public override void OnInspectorGUI() {
-        Sprite s = EditorGUILayout.ObjectField(tile.Sprite, typeof(Sprite), false) as Sprite;
-        if (s != tile.Sprite) {
-            tile.Sprite = s;
-            tile.gameObject.GetComponent<SpriteRenderer>().sprite = tile.Sprite;
+        TileType newType = (TileType)EditorGUILayout.EnumPopup("Tyle type: ", tile.TileType);
+        if (newType != tile.TileType) {
+            tile.TileType = newType;
         }
-
-        tile.TyleType = (GridTile.TileType)EditorGUILayout.EnumPopup("Tyle type: ", tile.TyleType);
-        tile.CanBeNavigated = EditorGUILayout.Toggle("Can be navigated: ", tile.CanBeNavigated);
-
     }
 }
